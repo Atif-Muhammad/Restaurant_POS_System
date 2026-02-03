@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProducts, addProduct, updateProduct, deleteProduct, getCategories, addCategory, BACKEND_URL } from '../../https';
+import { getProducts, addProduct, updateProduct, deleteProduct, getCategories, addCategory, updateCategory, deleteCategory, BACKEND_URL } from '../../https';
 import { enqueueSnackbar } from 'notistack';
 import Modal from '../ui/Modal';
 
@@ -23,6 +23,9 @@ const ProductImage = ({ product, categories }) => {
         if (name.includes('burger')) return <span className="text-3xl">🍔</span>;
         if (name.includes('drink') || name.includes('coke') || name.includes('pepsi')) return <span className="text-3xl">🥤</span>;
         if (name.includes('fries')) return <span className="text-3xl">🍟</span>;
+        if (name.includes('pasta')) return <span className="text-3xl">🍝</span>;
+        if (name.includes('roll')) return <span className="text-3xl">🍣</span>;
+        if (name.includes('chicken')) return <span className='text-3xl'>🍗</span>
 
         if (product.isHotDeal) return <span className="text-3xl">🔥</span>;
         return <span className="text-3xl">📦</span>;
@@ -64,7 +67,9 @@ const ProductGrid = ({ onAddToCart }) => {
     const [selectedCategory, setSelectedCategory] = useState(null); // ID or 'HOT_DEALS'
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isCategoryDeleteModalOpen, setIsCategoryDeleteModalOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState(null);
+    const [categoryToDelete, setCategoryToDelete] = useState(null);
     const [isHotDealCreation, setIsHotDealCreation] = useState(false);
 
     const searchQuery = useSelector((state) => state.app.searchQuery);
@@ -74,6 +79,7 @@ const ProductGrid = ({ onAddToCart }) => {
     const [newItem, setNewItem] = useState({ name: '', price: '', image_url: '', specifications: [], isHotDeal: false });
     const [selectedImage, setSelectedImage] = useState(null);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [editingCategory, setEditingCategory] = useState(null);
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newCategoryIcon, setNewCategoryIcon] = useState("");
 
@@ -137,6 +143,32 @@ const ProductGrid = ({ onAddToCart }) => {
         onError: () => enqueueSnackbar('Failed to add category', { variant: 'error' })
     });
 
+    const updateCategoryMutation = useMutation({
+        mutationFn: updateCategory,
+        onSuccess: () => {
+            queryClient.invalidateQueries(['categories']);
+            enqueueSnackbar('Category updated', { variant: 'success' });
+            setIsAddModalOpen(false);
+            setEditingCategory(null);
+            setNewCategoryName("");
+            setNewCategoryIcon("");
+        },
+        onError: () => enqueueSnackbar('Failed to update category', { variant: 'error' })
+    });
+
+    const deleteCategoryMutation = useMutation({
+        mutationFn: deleteCategory,
+        onSuccess: () => {
+            queryClient.invalidateQueries(['categories']);
+            queryClient.invalidateQueries(['products']);
+            enqueueSnackbar('Category and associated products deleted', { variant: 'success' });
+            setIsCategoryDeleteModalOpen(false);
+            setCategoryToDelete(null);
+            setSelectedCategory(null);
+        },
+        onError: () => enqueueSnackbar('Failed to delete category', { variant: 'error' })
+    });
+
     // Formatting
     const handleAddSubmit = (e) => {
         e.preventDefault();
@@ -174,8 +206,16 @@ const ProductGrid = ({ onAddToCart }) => {
                 addProductMutation.mutate(formData);
             }
         } else {
-            // Add Category - Simple JSON
-            addCategoryMutation.mutate({ name: newCategoryName, icon: newCategoryIcon });
+            // Add or Update Category
+            if (editingCategory) {
+                updateCategoryMutation.mutate({
+                    categoryId: editingCategory._id,
+                    name: newCategoryName,
+                    icon: newCategoryIcon
+                });
+            } else {
+                addCategoryMutation.mutate({ name: newCategoryName, icon: newCategoryIcon });
+            }
         }
     };
 
@@ -223,6 +263,21 @@ const ProductGrid = ({ onAddToCart }) => {
         setIsDeleteModalOpen(true);
     };
 
+    const handleEditCategory = (e, cat) => {
+        e.stopPropagation();
+        setEditingCategory(cat);
+        setNewCategoryName(cat.name);
+        setNewCategoryIcon(cat.icon || "");
+        setSelectedCategory(null); // This triggers the Category modal view
+        setIsAddModalOpen(true);
+    };
+
+    const handleDeleteCategory = (e, cat) => {
+        e.stopPropagation();
+        setCategoryToDelete(cat);
+        setIsCategoryDeleteModalOpen(true);
+    };
+
     if (productsLoading || categoriesLoading) return <div className="text-white p-6">Loading resources...</div>;
 
     return (
@@ -260,14 +315,33 @@ const ProductGrid = ({ onAddToCart }) => {
                     </button>
 
                     {categories.map(cat => (
-                        <button
-                            key={cat._id}
-                            onClick={() => setSelectedCategory(cat)}
-                            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${selectedCategory?._id === cat._id ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
-                        >
-                            {cat.icon && <span className="text-sm">{cat.icon}</span>}
-                            {cat.name}
-                        </button>
+                        <div key={cat._id} className="relative group/cat">
+                            <button
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 pr-8 ${selectedCategory?._id === cat._id ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                            >
+                                {cat.icon && <span className="text-sm">{cat.icon}</span>}
+                                {cat.name}
+                            </button>
+
+                            {/* Category Actions */}
+                            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover/cat:opacity-100 transition-opacity">
+                                <button
+                                    onClick={(e) => handleEditCategory(e, cat)}
+                                    className="p-1 hover:text-blue-400 text-gray-500 transition-colors"
+                                    title="Edit Category"
+                                >
+                                    <FaPen size={8} />
+                                </button>
+                                <button
+                                    onClick={(e) => handleDeleteCategory(e, cat)}
+                                    className="p-1 hover:text-red-400 text-gray-500 transition-colors"
+                                    title="Delete Category"
+                                >
+                                    <FaTrash size={8} />
+                                </button>
+                            </div>
+                        </div>
                     ))}
                 </div>
 
@@ -349,11 +423,14 @@ const ProductGrid = ({ onAddToCart }) => {
                 onClose={() => {
                     setIsAddModalOpen(false);
                     setEditingProduct(null);
+                    setEditingCategory(null);
                     setIsHotDealCreation(false);
                     setNewItem({ name: '', price: '', image_url: '', specifications: [], isHotDeal: false });
+                    setNewCategoryName("");
+                    setNewCategoryIcon("");
                     setSelectedImage(null);
                 }}
-                title={selectedCategory === 'HOT_DEALS' ? (editingProduct ? 'Edit Hot Deal' : 'New Hot Deal') : (selectedCategory ? (editingProduct ? 'Edit Product' : `Add to ${selectedCategory.name}`) : 'New Category')}
+                title={selectedCategory === 'HOT_DEALS' ? (editingProduct ? 'Edit Hot Deal' : 'New Hot Deal') : (selectedCategory ? (editingProduct ? 'Edit Product' : `Add to ${selectedCategory.name}`) : (editingCategory ? 'Edit Category' : 'New Category'))}
             >
                 <form onSubmit={handleAddSubmit} className="space-y-4">
                     {selectedCategory ? (
@@ -423,7 +500,7 @@ const ProductGrid = ({ onAddToCart }) => {
                 </form>
             </Modal>
 
-            {/* Delete Confirmation Modal */}
+            {/* Delete Product Confirmation Modal */}
             <Modal
                 isOpen={isDeleteModalOpen}
                 onClose={() => {
@@ -459,6 +536,53 @@ const ProductGrid = ({ onAddToCart }) => {
                             className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white py-3 rounded-lg font-bold uppercase tracking-widest shadow-lg shadow-red-600/20 transition-all"
                         >
                             {deleteProductMutation.isPending ? 'Deleting...' : 'Delete'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Delete Category Confirmation Modal */}
+            <Modal
+                isOpen={isCategoryDeleteModalOpen}
+                onClose={() => {
+                    setIsCategoryDeleteModalOpen(false);
+                    setCategoryToDelete(null);
+                }}
+                title="⚠️ CASCADE DELETE WARNING"
+            >
+                <div className="space-y-6">
+                    <div className="bg-red-600/10 border border-red-600/20 rounded-xl p-6 flex flex-col items-center gap-4 text-center">
+                        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center text-white scale-110 shadow-xl shadow-red-600/30">
+                            <FaTrash size={24} />
+                        </div>
+                        <div>
+                            <p className="text-xl text-white font-black uppercase tracking-tight">Delete "{categoryToDelete?.name}" Category?</p>
+                            <p className="text-red-400 text-sm mt-3 font-bold">CRITICAL WARNING:</p>
+                            <p className="text-gray-400 text-sm mt-1">
+                                Deleting this category will <span className="text-white font-bold decoration-red-500 underline underline-offset-4 tracking-wide">PERMANENTLY REMOVE ALL PRODUCTS</span> associated with it from the database.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => {
+                                setIsCategoryDeleteModalOpen(false);
+                                setCategoryToDelete(null);
+                            }}
+                            className="flex-1 bg-white/5 hover:bg-white/10 text-white py-4 rounded-xl font-black uppercase tracking-widest transition-all border border-white/5"
+                        >
+                            Abort
+                        </button>
+                        <button
+                            onClick={() => deleteCategoryMutation.mutate(categoryToDelete?._id)}
+                            disabled={deleteCategoryMutation.isPending}
+                            className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-2xl shadow-red-600/40 transition-all relative overflow-hidden group"
+                        >
+                            <span className="relative z-10">
+                                {deleteCategoryMutation.isPending ? 'Processing...' : 'Delete Everything'}
+                            </span>
+                            <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         </button>
                     </div>
                 </div>

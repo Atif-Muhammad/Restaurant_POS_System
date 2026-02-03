@@ -34,6 +34,8 @@ export const deleteProduct = (productId) => axiosWrapper.delete(`/api/product/${
 // Category Endpoints
 export const getCategories = () => axiosWrapper.get("/api/category");
 export const addCategory = (data) => axiosWrapper.post("/api/category", data);
+export const updateCategory = ({ categoryId, ...data }) => axiosWrapper.put(`/api/category/${categoryId}`, data);
+export const deleteCategory = (categoryId) => axiosWrapper.delete(`/api/category/${categoryId}`);
 
 // Dashboard Endpoints
 export const getDashboardStats = (period = 'day', startDate = null, endDate = null) => {

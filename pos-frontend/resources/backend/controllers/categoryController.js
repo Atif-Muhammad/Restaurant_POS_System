@@ -24,4 +24,34 @@ const createCategory = async (req, res, next) => {
     }
 };
 
-module.exports = { getCategories, createCategory };
+const updateCategory = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { name, icon } = req.body;
+        const updatedCategory = await Category.findByIdAndUpdate(id, { name, icon }, { new: true });
+        if (!updatedCategory) throw createHttpError(404, "Category not found");
+        res.status(200).json({ success: true, message: "Category updated", data: updatedCategory });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const deleteCategory = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const Category = require("../models/categoryModel");
+        const Product = require("../models/productModel");
+
+        const deletedCategory = await Category.findByIdAndDelete(id);
+        if (!deletedCategory) throw createHttpError(404, "Category not found");
+
+        // Cascade delete products
+        await Product.deleteMany({ category_id: id });
+
+        res.status(200).json({ success: true, message: "Category and associated products deleted" });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = { getCategories, createCategory, updateCategory, deleteCategory };
