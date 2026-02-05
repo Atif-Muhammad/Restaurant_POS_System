@@ -325,17 +325,17 @@ const ProductGrid = ({ onAddToCart }) => {
                             </button>
 
                             {/* Category Actions */}
-                            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover/cat:opacity-100 transition-opacity">
+                            <div className="absolute -top-1.5 -right-1.5 flex gap-1 opacity-0 group-hover/cat:opacity-100 transition-all transform translate-y-1 group-hover/cat:translate-y-0 z-20">
                                 <button
                                     onClick={(e) => handleEditCategory(e, cat)}
-                                    className="p-1 hover:text-blue-400 text-gray-500 transition-colors"
+                                    className="p-1.5 bg-blue-600 text-white rounded-md shadow-xl hover:bg-blue-500 transition-colors border border-white/10"
                                     title="Edit Category"
                                 >
                                     <FaPen size={8} />
                                 </button>
                                 <button
                                     onClick={(e) => handleDeleteCategory(e, cat)}
-                                    className="p-1 hover:text-red-400 text-gray-500 transition-colors"
+                                    className="p-1.5 bg-red-600 text-white rounded-md shadow-xl hover:bg-red-500 transition-colors border border-white/10"
                                     title="Delete Category"
                                 >
                                     <FaTrash size={8} />

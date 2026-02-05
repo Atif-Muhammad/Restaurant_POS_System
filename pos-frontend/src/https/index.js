@@ -21,6 +21,8 @@ export const addOrder = (data) => axiosWrapper.post("/api/order/", data);
 export const getOrders = (params = {}) => axiosWrapper.get("/api/order", { params });
 export const updateOrderStatus = ({ orderId, orderStatus }) =>
   axiosWrapper.put(`/api/order/${orderId}`, { orderStatus });
+export const deleteOrder = (orderId) => axiosWrapper.delete(`/api/order/${orderId}`);
+export const deleteAllOrders = () => axiosWrapper.delete("/api/order/delete-all");
 
 // Product Endpoints
 export const getProducts = () => axiosWrapper.get("/api/product");
