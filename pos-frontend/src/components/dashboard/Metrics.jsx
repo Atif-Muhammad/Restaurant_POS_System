@@ -1,14 +1,13 @@
-import React, { useState } from "react";
+import React from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { getDashboardStats } from "../../https";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { FiCalendar } from "react-icons/fi";
 
-const Metrics = () => {
-  const [period, setPeriod] = useState('day');
-  const [customRange, setCustomRange] = useState({ start: '', end: '' });
-  const [useCustomRange, setUseCustomRange] = useState(false);
+// Filter state is now OWNED by Dashboard.jsx and passed in as props.
+// This allows RecentOrders to share the same filter.
+const Metrics = ({ period, customRange, useCustomRange, onPresetChange, onCustomRangeChange, onCustomRangeApply }) => {
 
-  // Construct a stable query key that only changes when we actually apply a filter
   const queryKey = useCustomRange
     ? ['dashboardStats', 'custom', customRange.start, customRange.end]
     : ['dashboardStats', period];
@@ -27,30 +26,11 @@ const Metrics = () => {
     staleTime: 0,
   });
 
-  if (error) {
-    console.error("Dashboard Stats Error:", error);
-  }
+  if (error) console.error("Dashboard Stats Error:", error);
 
-  // Safe data extraction
-  const kpi = statsData?.data?.data?.kpi || { revenue: 0, orders: 0, aov: 0, netProfit: 0 };
+  const kpi = statsData?.data?.data?.kpi || { revenue: 0, orders: 0, aov: 0 };
   const trend = Array.isArray(statsData?.data?.data?.trend) ? statsData.data.data.trend : [];
 
-  const handleCustomRangeApply = () => {
-    if (customRange.start && customRange.end) {
-      setUseCustomRange(true);
-      // Determine if we should switch period to 'custom' explicitly if needed, 
-      // but current logic uses 'custom' via useCustomRange flag in queryFn.
-      // We might want to reset 'period' state to avoid confusion or keep it as fallback.
-    }
-  };
-
-  const handlePresetPeriod = (p) => {
-    setPeriod(p);
-    setUseCustomRange(false);
-    setCustomRange({ start: '', end: '' });
-  };
-
-  // Custom Tooltip for detailed hover info
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length && payload[0]?.payload) {
       return (
@@ -70,126 +50,130 @@ const Metrics = () => {
     return null;
   };
 
-  // if (isLoading) return <div className="p-8 text-white">Loading Dashboard...</div>;
+  const PRESETS = ['day', 'week', 'month', 'year'];
+  const activePreset = !useCustomRange ? period : null;
 
   return (
     <div className="space-y-6">
       {/* Header & Filter */}
-      <div className="bg-[#1c1c1c] p-6 rounded-2xl border border-white/10 space-y-4 relative z-50">
+      <div className="bg-[#1c1c1c] p-6 rounded-2xl border border-white/10 space-y-5 relative z-50">
         <div>
-          <h2 className="font-black text-white text-2xl tracking-tight">
-            Sales Overview
-          </h2>
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">
-            PERFORMANCE METRICS
-          </p>
+          <h2 className="font-black text-white text-2xl tracking-tight">Sales Overview</h2>
+          <p className="text-xs text-gray-500 font-medium uppercase tracking-widest mt-1">PERFORMANCE METRICS</p>
         </div>
 
-        {/* Time Filter Controls */}
-        <div className="flex flex-wrap gap-4 items-end">
-          {/* Preset Buttons */}
-          <div className="flex bg-[#0a0a0a] p-1 rounded-xl border border-white/10">
-            {['day', 'week', 'month', 'year'].map(p => (
+        {/* Filter Row */}
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* Preset pill buttons */}
+          <div className="flex bg-[#0a0a0a] p-1 rounded-xl border border-white/10 gap-0.5">
+            {PRESETS.map(p => (
               <button
                 key={p}
                 type="button"
-                onClick={() => handlePresetPeriod(p)}
-                className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${!useCustomRange && period === p ? 'bg-white text-black shadow-lg transform scale-105' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                onClick={() => onPresetChange(p)}
+                className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all cursor-pointer ${activePreset === p
+                    ? 'bg-white text-black shadow-lg'
+                    : 'text-gray-500 hover:text-white hover:bg-white/5'
+                  }`}
               >
                 {p}
               </button>
             ))}
           </div>
 
-          {/* Custom Date Range */}
-          <div className="flex items-center gap-2 bg-[#0a0a0a] p-2 rounded-xl border border-white/10">
+          {/* Divider */}
+          <div className="h-8 w-px bg-white/10 hidden md:block" />
+
+          {/* Custom Date Range — improved UI */}
+          <div className={`flex items-center gap-2 bg-[#0a0a0a] px-3 py-2 rounded-xl border transition-all ${useCustomRange ? 'border-orange-500/60 shadow-lg shadow-orange-500/10' : 'border-white/10'}`}>
+            <FiCalendar className={`text-sm flex-shrink-0 ${useCustomRange ? 'text-orange-400' : 'text-gray-500'}`} />
             <input
               type="date"
               value={customRange.start}
-              onChange={(e) => setCustomRange({ ...customRange, start: e.target.value })}
-              className="bg-[#1c1c1c] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-orange-500 cursor-pointer"
+              onChange={(e) => onCustomRangeChange({ ...customRange, start: e.target.value })}
+              className="bg-transparent text-xs text-white outline-none cursor-pointer w-32 [color-scheme:dark]"
             />
-            <span className="text-gray-500 text-xs font-bold">to</span>
+            <span className="text-gray-600 text-xs font-bold">→</span>
             <input
               type="date"
               value={customRange.end}
-              onChange={(e) => setCustomRange({ ...customRange, end: e.target.value })}
-              className="bg-[#1c1c1c] border border-white/10 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-orange-500 cursor-pointer"
+              onChange={(e) => onCustomRangeChange({ ...customRange, end: e.target.value })}
+              className="bg-transparent text-xs text-white outline-none cursor-pointer w-32 [color-scheme:dark]"
             />
             <button
               type="button"
-              onClick={handleCustomRangeApply}
+              onClick={onCustomRangeApply}
               disabled={!customRange.start || !customRange.end}
-              className="bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+              className="ml-1 bg-orange-600 hover:bg-orange-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-white px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all"
             >
               Apply
             </button>
+            {useCustomRange && (
+              <button
+                type="button"
+                onClick={() => onPresetChange('day')}
+                className="ml-1 text-gray-500 hover:text-white text-xs font-bold transition-all"
+                title="Clear custom range"
+              >
+                ✕
+              </button>
+            )}
           </div>
+
+          {/* Active filter badge */}
+          {useCustomRange && (
+            <span className="text-[10px] font-black uppercase tracking-widest text-orange-400 bg-orange-500/10 px-3 py-1.5 rounded-full border border-orange-500/20">
+              Custom Range Active
+            </span>
+          )}
         </div>
       </div>
 
-      {/* KPI Cards - 3 Cards */}
+      {/* KPI Cards */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-[#1c1c1c] rounded-2xl p-6 border border-white/10 h-32 animate-pulse"></div>
+            <div key={i} className="bg-[#1c1c1c] rounded-2xl p-6 border border-white/10 h-32 animate-pulse" />
           ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total Revenue */}
-          <div className="bg-[#1c1c1c] rounded-2xl p-6 border border-white/10 relative overflow-hidden group hover:border-orange-500/30 transition-all">
-            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">
-              TOTAL REVENUE
-            </p>
-            <p className="text-4xl font-black text-orange-500 tracking-tight mb-4">
-              PKR {kpi.revenue.toLocaleString()}
-            </p>
+          <div className="bg-[#1c1c1c] rounded-2xl p-6 border border-white/10 hover:border-orange-500/30 transition-all">
+            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">TOTAL REVENUE</p>
+            <p className="text-4xl font-black text-orange-500 tracking-tight mb-4">PKR {kpi.revenue.toLocaleString()}</p>
             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-orange-500 w-full"></div>
+              <div className="h-full bg-orange-500 w-full" />
             </div>
           </div>
-
-          {/* Total Orders */}
-          <div className="bg-[#1c1c1c] rounded-2xl p-6 border border-white/10 relative overflow-hidden group hover:border-blue-500/30 transition-all">
-            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">
-              TOTAL ORDERS
-            </p>
-            <p className="text-4xl font-black text-white tracking-tight mb-4">
-              {kpi.orders}
-            </p>
+          <div className="bg-[#1c1c1c] rounded-2xl p-6 border border-white/10 hover:border-blue-500/30 transition-all">
+            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">TOTAL ORDERS</p>
+            <p className="text-4xl font-black text-white tracking-tight mb-4">{kpi.orders}</p>
             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 w-full"></div>
+              <div className="h-full bg-blue-500 w-full" />
             </div>
           </div>
-
-          {/* Avg Order Value */}
-          <div className="bg-[#1c1c1c] rounded-2xl p-6 border border-white/10 relative overflow-hidden group hover:border-green-500/30 transition-all">
-            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">
-              AVG. ORDER VALUE
-            </p>
-            <p className="text-4xl font-black text-white tracking-tight mb-4">
-              PKR {kpi.aov}
-            </p>
+          <div className="bg-[#1c1c1c] rounded-2xl p-6 border border-white/10 hover:border-green-500/30 transition-all">
+            <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">AVG. ORDER VALUE</p>
+            <p className="text-4xl font-black text-white tracking-tight mb-4">PKR {kpi.aov}</p>
             <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-green-500 w-full"></div>
+              <div className="h-full bg-green-500 w-full" />
             </div>
           </div>
         </div>
       )}
 
-      {/* Unified Granular Chart */}
+      {/* Chart */}
       <div className="bg-[#1c1c1c] rounded-2xl p-6 border border-white/10">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-gray-500 text-xs font-bold uppercase tracking-widest">PERFORMANCE TREND</h3>
-          <div className="flex gap-4 text-[10px] font-black uppercase tracking-widest">
+          <div className="flex gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-              <span className="text-gray-400 text-xs">Revenue</span>
+              <div className="w-2 h-2 bg-orange-500 rounded-full" />
+              <span className="text-gray-400 text-xs font-black uppercase tracking-widest">Revenue</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-gray-400 text-xs">Orders</span>
+              <div className="w-2 h-2 bg-blue-500 rounded-full" />
+              <span className="text-gray-400 text-xs font-black uppercase tracking-widest">Orders</span>
             </div>
           </div>
         </div>
@@ -200,31 +184,10 @@ const Metrics = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={trend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} />
-                <XAxis
-                  dataKey="_id"
-                  stroke="#666"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={{ stroke: '#333' }}
-                />
-                <YAxis
-                  yAxisId="left"
-                  stroke="#f97316"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={{ stroke: '#333' }}
-                  tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  stroke="#3b82f6"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={{ stroke: '#333' }}
-                  allowDecimals={false}
-                />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }} />
+                <XAxis dataKey="_id" stroke="#666" fontSize={11} tickLine={false} axisLine={{ stroke: '#333' }} />
+                <YAxis yAxisId="left" stroke="#f97316" fontSize={11} tickLine={false} axisLine={{ stroke: '#333' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                <YAxis yAxisId="right" orientation="right" stroke="#3b82f6" fontSize={11} tickLine={false} axisLine={{ stroke: '#333' }} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
                 <Bar yAxisId="left" dataKey="sales" fill="#f97316" radius={[6, 6, 0, 0]} barSize={50} />
                 <Bar yAxisId="right" dataKey="orders" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={50} />
               </BarChart>

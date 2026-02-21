@@ -79,7 +79,7 @@ const Header = () => {
               {userData.name || "User"}
             </h1>
             <p className="text-[10px] text-[#ababab] font-medium uppercase tracking-wider">
-              {userData.role || "Staff"}
+              Mohib
             </p>
           </div>
         </div>

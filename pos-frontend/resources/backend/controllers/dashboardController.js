@@ -30,24 +30,24 @@ const getDashboardStats = async (req, res, next) => {
             }
         } else if (period === 'day') {
             const today = new Date(now);
-            today.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0); // Midnight today
             dateFilter = { timestamp: { $gte: today } };
             groupFormat = "%Y-%m-%d";
         } else if (period === 'week') {
-            const lastWeek = new Date(now);
-            lastWeek.setDate(now.getDate() - 7);
-            lastWeek.setHours(0, 0, 0, 0); // Start from midnight
-            dateFilter = { timestamp: { $gte: lastWeek } };
+            const startOfWeek = new Date(now);
+            const day = startOfWeek.getDay();
+            const diffToMon = (day === 0 ? -6 : 1 - day); // Monday is start of week
+            startOfWeek.setDate(now.getDate() + diffToMon);
+            startOfWeek.setHours(0, 0, 0, 0);
+            dateFilter = { timestamp: { $gte: startOfWeek } };
         } else if (period === 'month') {
-            const lastMonth = new Date(now);
-            lastMonth.setMonth(now.getMonth() - 1);
-            lastMonth.setHours(0, 0, 0, 0); // Start from midnight
-            dateFilter = { timestamp: { $gte: lastMonth } };
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            startOfMonth.setHours(0, 0, 0, 0);
+            dateFilter = { timestamp: { $gte: startOfMonth } };
         } else if (period === 'year') {
-            const lastYear = new Date(now);
-            lastYear.setFullYear(now.getFullYear() - 1);
-            lastYear.setHours(0, 0, 0, 0); // Start from midnight
-            dateFilter = { timestamp: { $gte: lastYear } };
+            const startOfYear = new Date(now.getFullYear(), 0, 1);
+            startOfYear.setHours(0, 0, 0, 0);
+            dateFilter = { timestamp: { $gte: startOfYear } };
             groupFormat = "%Y-%m";
         }
 

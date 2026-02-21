@@ -65,6 +65,7 @@ const ProductImage = ({ product, categories }) => {
 
 const ProductGrid = ({ onAddToCart, onRemoveFromCart }) => {
     const [selectedCategory, setSelectedCategory] = useState(null); // ID or 'HOT_DEALS'
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isCategoryDeleteModalOpen, setIsCategoryDeleteModalOpen] = useState(false);
@@ -286,65 +287,89 @@ const ProductGrid = ({ onAddToCart, onRemoveFromCart }) => {
         <div className="flex flex-col h-full bg-[#0a0a0a] relative overflow-hidden">
             {/* Header / Actions */}
             <div className="flex justify-between items-center p-4 border-b border-white/5 bg-[#141414] gap-4">
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide flex-1 items-center">
+                <div className="flex gap-3 overflow-visible flex-1 items-center">
                     {/* Search Bar */}
-                    <div className="relative min-w-[200px] max-w-[300px] mr-2">
-                        <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs" />
+                    <div className="relative w-full max-w-[200px] shrink-0">
+                        <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-[10px]" />
                         <input
                             type="text"
                             placeholder="Search Items..."
-                            className="w-full bg-[#0a0a0a] border border-white/5 rounded-lg pl-8 pr-4 py-2 text-xs text-white focus:border-orange-500 outline-none transition-all placeholder-gray-600"
+                            className="w-full bg-[#0a0a0a] border border-white/5 rounded-lg pl-8 pr-4 py-2.5 text-xs text-white focus:border-orange-500 outline-none transition-all placeholder-gray-600"
                             value={searchQuery}
                             onChange={(e) => dispatch(setSearchQuery(e.target.value))}
                         />
                     </div>
 
-                    <div className="h-6 w-px bg-white/10 mx-2"></div>
+                    <div className="h-6 w-px bg-white/10 mx-1 shrink-0"></div>
 
                     <button
                         onClick={() => setSelectedCategory(null)}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${!selectedCategory ? 'bg-orange-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                        className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0 ${!selectedCategory ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-[#1c1c1c] text-gray-400 hover:bg-white/10 border border-white/5'}`}
                     >
                         All Items
                     </button>
 
                     <button
                         onClick={() => setSelectedCategory('HOT_DEALS')}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 ${selectedCategory === 'HOT_DEALS' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                        className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 shrink-0 ${selectedCategory === 'HOT_DEALS' ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' : 'bg-[#1c1c1c] text-gray-400 hover:bg-white/10 border border-white/5'}`}
                     >
-                        <span className="text-sm">🔥</span>
+                        <span className="text-sm border-r border-white/10 pr-2">🔥</span>
                         Hot Deals
                     </button>
 
-                    {categories.map(cat => (
-                        <div key={cat._id} className="relative group/cat">
-                            <button
-                                onClick={() => setSelectedCategory(cat)}
-                                className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 pr-8 ${selectedCategory?._id === cat._id ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
-                            >
-                                {cat.icon && <span className="text-sm">{cat.icon}</span>}
-                                {cat.name}
-                            </button>
+                    <div className="relative shrink-0 z-30">
+                        <button
+                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                            className={`px-5 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 border ${selectedCategory && selectedCategory !== 'HOT_DEALS' ? 'bg-[#1c1c1c] border-orange-500 text-white shadow-lg shadow-orange-500/10' : 'bg-[#1c1c1c] border-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            {selectedCategory && selectedCategory !== 'HOT_DEALS' ? (
+                                <><span className="text-orange-500 mr-1 opacity-50">●</span> {selectedCategory.icon && <span className="text-sm">{selectedCategory.icon}</span>} {selectedCategory.name} <span className="ml-2 text-[8px] opacity-50">▼</span></>
+                            ) : (
+                                <><span>🗂️</span> Categories <span className="ml-2 text-[8px] opacity-50">▼</span></>
+                            )}
+                        </button>
 
-                            {/* Category Actions */}
-                            <div className="absolute -top-1.5 -right-1.5 flex gap-1 opacity-0 group-hover/cat:opacity-100 transition-all transform translate-y-1 group-hover/cat:translate-y-0 z-20">
-                                <button
-                                    onClick={(e) => handleEditCategory(e, cat)}
-                                    className="p-1.5 bg-blue-600 text-white rounded-md shadow-xl hover:bg-blue-500 transition-colors border border-white/10"
-                                    title="Edit Category"
-                                >
-                                    <FaPen size={8} />
-                                </button>
-                                <button
-                                    onClick={(e) => handleDeleteCategory(e, cat)}
-                                    className="p-1.5 bg-red-600 text-white rounded-md shadow-xl hover:bg-red-500 transition-colors border border-white/10"
-                                    title="Delete Category"
-                                >
-                                    <FaTrash size={8} />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
+                        {isDropdownOpen && (
+                            <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)}></div>
+                                <div className="absolute top-full mt-2 left-0 w-72 bg-[#1c1c1c] border border-white/10 rounded-xl shadow-2xl z-50 py-3 max-h-96 overflow-y-auto">
+                                    <div className="px-4 py-2 text-[10px] text-gray-500 font-black uppercase tracking-widest border-b border-white/5 mb-2 pb-3">Select Category</div>
+                                    {categories.length === 0 ? (
+                                        <div className="px-4 py-6 text-xs text-gray-500 italic text-center">No categories found.<br />Click "+ Add Category" to create one.</div>
+                                    ) : (
+                                        categories.map(cat => (
+                                            <div key={cat._id} className="relative group/cat px-2 mb-1">
+                                                <button
+                                                    onClick={() => { setSelectedCategory(cat); setIsDropdownOpen(false); }}
+                                                    className={`w-full text-left px-3 py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-3 ${selectedCategory?._id === cat._id ? 'bg-orange-500/10 text-orange-500' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+                                                >
+                                                    {cat.icon ? <span className="text-lg w-6 flex justify-center items-center">{cat.icon}</span> : <span className="w-6 flex justify-center items-center opacity-30">📁</span>}
+                                                    <span className="flex-1 truncate">{cat.name}</span>
+                                                </button>
+                                                {/* Edit/Delete absolute positioned on hover */}
+                                                <div className="absolute top-1/2 -translate-y-1/2 right-4 flex gap-1.5 opacity-0 group-hover/cat:opacity-100 transition-all">
+                                                    <button
+                                                        onClick={(e) => { setIsDropdownOpen(false); handleEditCategory(e, cat); }}
+                                                        className="p-2 bg-[#262626] border border-white/10 text-gray-400 hover:text-white hover:border-blue-500 rounded-lg shadow-lg transition-all"
+                                                        title="Edit Category"
+                                                    >
+                                                        <FaPen size={10} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => { setIsDropdownOpen(false); handleDeleteCategory(e, cat); }}
+                                                        className="p-2 bg-[#262626] border border-white/10 text-gray-400 hover:text-white hover:border-red-500 rounded-lg shadow-lg transition-all"
+                                                        title="Delete Category"
+                                                    >
+                                                        <FaTrash size={10} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 <button

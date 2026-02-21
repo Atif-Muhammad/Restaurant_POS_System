@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "concurrently \"bun run dev\" \"wait-on tcp:5173 && electron .\"",
-    "electron:build": "node scripts/prepare-backend-final.cjs && vite build && electron-builder"
+    "electron:build": "node scripts/prepare-backend-final.cjs && vite build && electron-builder",
+    "app:run": "chmod +x \"./release/FryDate POS-0.0.0.AppImage\" && \"./release/FryDate POS-0.0.0.AppImage\"",
+    "app:run:sandbox": "chmod +x \"./release/FryDate POS-0.0.0.AppImage\" && \"./release/FryDate POS-0.0.0.AppImage\" --no-sandbox"
   },
   "build": {
     "appId": "com.fryDate.app",
