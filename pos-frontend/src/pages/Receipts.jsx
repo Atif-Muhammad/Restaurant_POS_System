@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { getOrders } from '../https';
-import { formatDateAndTime } from '../utils';
+import { formatDateAndTime, formatPKT } from '../utils';
 import Modal from '../components/ui/Modal';
 
 const Receipts = () => {
@@ -199,7 +199,7 @@ const Receipts = () => {
                             </div>
                             <div className="flex justify-between mb-2">
                                 <span className="text-gray-400">Date/Time</span>
-                                <span className="text-black">{new Date(selectedReceipt.timestamp || selectedReceipt.createdAt).toLocaleString()}</span>
+                                <span className="text-black">{formatPKT(selectedReceipt.timestamp || selectedReceipt.createdAt)}</span>
                             </div>
                             <div className="flex justify-between mb-2">
                                 <span className="text-gray-400">Customer</span>

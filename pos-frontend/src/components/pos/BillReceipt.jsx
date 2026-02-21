@@ -1,7 +1,20 @@
 import React from "react";
 
 const BillReceipt = React.forwardRef(
-	({ cart, customer, totals, invoiceId, paymentMethod }, ref) => {
+	({ cart, customer, totals, invoiceId, paymentMethod, orderTime }, ref) => {
+		// ✅ Use the server-confirmed timestamp passed from parent.
+		// Fallback to now() only if not provided (defensive).
+		const displayTime = orderTime
+			? new Date(orderTime).toLocaleString("en-US", {
+				year: "numeric", month: "2-digit", day: "2-digit",
+				hour: "2-digit", minute: "2-digit", hour12: true,
+				timeZone: "Asia/Karachi" // ✅ PKT
+			})
+			: new Date().toLocaleString("en-US", {
+				year: "numeric", month: "2-digit", day: "2-digit",
+				hour: "2-digit", minute: "2-digit", hour12: true,
+				timeZone: "Asia/Karachi"
+			});
 		return (
 			<div
 				ref={ref}
@@ -76,16 +89,7 @@ const BillReceipt = React.forwardRef(
 						}}
 					>
 						<span style={{ letterSpacing: "1px" }}>Order Time:</span>
-						<span>
-							{new Date().toLocaleString("en-US", {
-								year: "numeric",
-								month: "2-digit",
-								day: "2-digit",
-								hour: "2-digit",
-								minute: "2-digit",
-								hour12: true,
-							})}
-						</span>
+						<span>{displayTime}</span>
 					</div>
 					<div
 						style={{

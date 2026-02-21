@@ -11,7 +11,12 @@ const OrderCart = ({ cart, setCart }) => {
     const [payment, setPayment] = useState({ received: 0, method: 'Cash' });
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
     const [invoiceId, setInvoiceId] = useState('');
+    const [orderTime, setOrderTime] = useState(null); // ✅ Server-confirmed timestamp
 
+    // ✅ invoiceIdRef stores the LATEST confirmed invoice ID from the server.
+    // We write to it synchronously before calling handlePrint() to avoid the
+    // setTimeout race condition where the receipt would print with a stale/empty ID.
+    const invoiceIdRef = useRef('');
     const receiptRef = useRef();
     const queryClient = useQueryClient();
 
@@ -39,6 +44,8 @@ const OrderCart = ({ cart, setCart }) => {
             setPayment({ ...payment, received: 0 });
             setIsConfirmModalOpen(false);
             setInvoiceId('');
+            setOrderTime(null);
+            invoiceIdRef.current = '';
         }
     });
 
@@ -47,14 +54,17 @@ const OrderCart = ({ cart, setCart }) => {
         mutationFn: addOrder,
         onSuccess: (response) => {
             queryClient.invalidateQueries(['orders']);
-            const orderId = response?.data?.data?.order_id || `INV-${Date.now()}`;
-            setInvoiceId(orderId);
-            enqueueSnackbar('Order Saved!', { variant: 'success' });
+            const confirmedOrderId = response?.data?.data?.order_id || `INV-${Date.now()}`;
+            const confirmedTimestamp = response?.data?.data?.timestamp || response?.data?.data?.createdAt || new Date().toISOString();
 
-            // Trigger print after a short delay to ensure invoice ID is set
-            setTimeout(() => {
-                handlePrint();
-            }, 100);
+            // ✅ Write to ref FIRST (synchronous, no re-render needed)
+            // then update state for display, then print immediately.
+            // This eliminates the 100ms setTimeout race condition entirely.
+            invoiceIdRef.current = confirmedOrderId;
+            setInvoiceId(confirmedOrderId);
+            setOrderTime(confirmedTimestamp); // ✅ Store server timestamp for receipt
+            enqueueSnackbar('Order Saved!', { variant: 'success' });
+            handlePrint(); // ✅ Safe: ref already has the correct ID
         },
         onError: (err) => {
             enqueueSnackbar('Failed to save order', { variant: 'error' });
@@ -64,6 +74,11 @@ const OrderCart = ({ cart, setCart }) => {
 
     const handleCheckout = () => {
         if (cart.length === 0) return enqueueSnackbar('Cart is empty', { variant: 'warning' });
+
+        // ✅ Generate idempotent ID on the CLIENT before sending.
+        // If this request fires twice (network retry, double-click), the backend
+        // will use findOneAndUpdate+upsert which is safe against creating duplicates.
+        const clientOrderId = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 100)}`;
 
         const orderData = {
             customerDetails: {
@@ -85,7 +100,8 @@ const OrderCart = ({ cart, setCart }) => {
                 variant: ""
             })),
             paymentMethod: payment.method,
-            table: customer.table
+            table: customer.table,
+            order_id: clientOrderId // ✅ Sent from client for idempotency
         };
 
         saveOrderMutation.mutate(orderData);
@@ -286,9 +302,10 @@ const OrderCart = ({ cart, setCart }) => {
                         </button>
                         <button
                             onClick={handleCheckout}
-                            className="bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold uppercase text-xs shadow-lg"
+                            disabled={saveOrderMutation.isPending}
+                            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold uppercase text-xs shadow-lg active:scale-95 transition-all"
                         >
-                            Confirm & Print
+                            {saveOrderMutation.isPending ? 'Saving...' : 'Confirm & Print'}
                         </button>
                     </div>
                 </div>
@@ -303,6 +320,7 @@ const OrderCart = ({ cart, setCart }) => {
                     totals={{ total: totalBill, received: payment.received, change: balance }}
                     paymentMethod={payment.method}
                     invoiceId={invoiceId}
+                    orderTime={orderTime}
                 />
             </div>
         </div>

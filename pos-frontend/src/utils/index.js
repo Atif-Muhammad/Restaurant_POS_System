@@ -17,7 +17,7 @@ export const getBgColor = () => {
 };
 
 export const getAvatarName = (name) => {
-  if(!name) return "";
+  if (!name) return "";
 
   return name.split(" ").map(word => word[0]).join("").toUpperCase();
 
@@ -32,6 +32,7 @@ export const formatDate = (date) => {
 };
 
 export const formatDateAndTime = (date) => {
+  if (!date) return 'N/A';
   const dateAndTime = new Date(date).toLocaleString("en-US", {
     month: "long",
     day: "2-digit",
@@ -40,8 +41,23 @@ export const formatDateAndTime = (date) => {
     minute: "2-digit",
     second: "2-digit",
     hour12: true,
-    timeZone: "Asia/Kolkata"
+    timeZone: "Asia/Karachi" // ✅ PKT = UTC+5:00 (was Asia/Kolkata = UTC+5:30 — 30 min ahead!)
   })
 
   return dateAndTime;
+}
+
+// Standalone helper for raw Date objects formatted in PKT
+export const formatPKT = (date) => {
+  if (!date) return 'N/A';
+  return new Date(date).toLocaleString("en-US", {
+    month: "long",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Karachi"
+  });
 }

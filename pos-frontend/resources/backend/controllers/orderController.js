@@ -4,28 +4,34 @@ const { default: mongoose } = require("mongoose");
 
 const addOrder = async (req, res, next) => {
   try {
-    const { customerDetails, items, bills, items: rawItems, table, paymentMethod } = req.body; // Adapt to whatever frontend sends, or standardise.
+    const { customerDetails, items, bills, table, paymentMethod, order_id: clientOrderId } = req.body;
 
-    // Generate Order ID: ORD-TIMESTAMP-RANDOM
-    const order_id = `ORD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 100)}`;
+    // ✅ Use the client-provided ID if present, otherwise generate one.
+    // Using findOneAndUpdate+upsert makes this IDEMPOTENT:
+    // If the exact same order_id is sent twice (network retry, Electron re-fire,
+    // double-click), MongoDB updates the existing doc instead of inserting a duplicate.
+    const order_id = clientOrderId || `ORD-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 100)}`;
 
-    // Map items to schema if needed, or assume frontend sends correct structure.
-    // Ideally frontend should send items with product_id, name, qty, price.
-
-    const newOrder = new Order({
-      order_id,
+    const orderPayload = {
       items,
-      total_amount: bills.total, // Schema calls it total_amount
+      total_amount: bills.total,
       status: 'completed',
       customerDetails,
       table,
       paymentMethod
-    });
+    };
 
-    await newOrder.save();
+    const savedOrder = await Order.findOneAndUpdate(
+      { order_id },                         // ← find by the unique idempotency key
+      { $setOnInsert: { order_id, ...orderPayload } }, // ← only write on first insert
+      { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+
+    // 201 on genuine insert, 200 on idempotent replay
+    const isNewOrder = savedOrder.createdAt?.getTime() === savedOrder.updatedAt?.getTime();
     res
-      .status(201)
-      .json({ success: true, message: "Order created!", data: newOrder });
+      .status(isNewOrder ? 201 : 200)
+      .json({ success: true, message: isNewOrder ? "Order created!" : "Order already exists (idempotent replay)", data: savedOrder });
   } catch (error) {
     next(error);
   }
